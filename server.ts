@@ -3,8 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
 const rawPort = process.env.PORT;
@@ -14,27 +12,117 @@ const PORT: number | string =
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-// Initialize Firebase Admin with Firestore
-let db: any = null;
+let firebaseConfig: { projectId: string; apiKey: string; firestoreDatabaseId: string } | null = null;
 
-function initFirebase() {
+function loadFirebaseConfig() {
   try {
     const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
     if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (!getApps().length) {
-        initializeApp({ projectId: config.projectId });
-      }
-      db = config.firestoreDatabaseId
-        ? getFirestore(config.firestoreDatabaseId)
-        : getFirestore();
-      console.log('Firebase initialized successfully for database:', config.firestoreDatabaseId || 'default');
+      firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      console.log('Loaded Firebase config for database:', firebaseConfig?.firestoreDatabaseId || '(default)');
     }
   } catch (err) {
-    console.error('Error initializing Firebase:', err);
+    console.error('Error loading firebase-applet-config.json:', err);
   }
 }
-initFirebase();
+loadFirebaseConfig();
+
+function getFirestoreBaseUrl() {
+  if (!firebaseConfig) return null;
+  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+  return `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${dbId}/documents`;
+}
+
+function toFirestoreValue(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) return { integerValue: String(val) };
+    return { doubleValue: val };
+  }
+  if (typeof val === 'string') return { stringValue: val };
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(toFirestoreValue) } };
+  }
+  if (typeof val === 'object') {
+    const fields: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      fields[k] = toFirestoreValue(v);
+    }
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
+function fromFirestoreValue(field: any): any {
+  if (!field) return null;
+  if ('stringValue' in field) return field.stringValue;
+  if ('booleanValue' in field) return field.booleanValue;
+  if ('integerValue' in field) return Number(field.integerValue);
+  if ('doubleValue' in field) return Number(field.doubleValue);
+  if ('nullValue' in field) return null;
+  if ('arrayValue' in field) {
+    return (field.arrayValue.values || []).map(fromFirestoreValue);
+  }
+  if ('mapValue' in field) {
+    const res: Record<string, any> = {};
+    const fields = field.mapValue.fields || {};
+    for (const [k, v] of Object.entries(fields)) {
+      res[k] = fromFirestoreValue(v);
+    }
+    return res;
+  }
+  return null;
+}
+
+function fromFirestoreDoc(doc: any): Record<string, any> {
+  const res: Record<string, any> = {};
+  const fields = doc.fields || {};
+  for (const [k, v] of Object.entries(fields)) {
+    res[k] = fromFirestoreValue(v);
+  }
+  return res;
+}
+
+async function firestoreRestUpsert(collection: string, docId: string, data: Record<string, any>) {
+  const baseUrl = getFirestoreBaseUrl();
+  if (!baseUrl || !firebaseConfig?.apiKey) return;
+  const fields: Record<string, any> = {};
+  for (const [k, v] of Object.entries(data)) {
+    fields[k] = toFirestoreValue(v);
+  }
+  const url = `${baseUrl}/${collection}/${docId}?key=${firebaseConfig.apiKey}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    console.warn(`Firestore REST upsert notice (${res.status}):`, txt);
+  }
+}
+
+async function firestoreRestDelete(collection: string, docId: string) {
+  const baseUrl = getFirestoreBaseUrl();
+  if (!baseUrl || !firebaseConfig?.apiKey) return;
+  const url = `${baseUrl}/${collection}/${docId}?key=${firebaseConfig.apiKey}`;
+  await fetch(url, { method: 'DELETE' });
+}
+
+async function firestoreRestList(collection: string): Promise<any[]> {
+  const baseUrl = getFirestoreBaseUrl();
+  if (!baseUrl || !firebaseConfig?.apiKey) return [];
+  const url = `${baseUrl}/${collection}?key=${firebaseConfig.apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!data.documents) return [];
+  return data.documents.map((doc: any) => {
+    const docId = doc.name.split('/').pop();
+    return { id: docId, ...fromFirestoreDoc(doc) };
+  });
+}
 
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -286,18 +374,28 @@ function ensureAdminInUsers(usersList: any[]) {
 }
 
 async function syncUsersToFirestore(users: any[]) {
-  if (!db) return;
+  if (!firebaseConfig) return;
   try {
-    const batch = db.batch();
+    const activeIds = new Set(
+      users.filter((u) => u.email).map((u) => u.email.toLowerCase().replace(/[^a-z0-9@_.-]/g, '_'))
+    );
+
+    const snapshot = await firestoreRestList('users');
+    for (const doc of snapshot) {
+      if (!activeIds.has(doc.id)) {
+        await firestoreRestDelete('users', doc.id);
+      }
+    }
+
     for (const u of users) {
       if (!u.email) continue;
       const safeId = u.email.toLowerCase().replace(/[^a-z0-9@_.-]/g, '_');
-      const docRef = db.collection('users').doc(safeId);
-      batch.set(docRef, u, { merge: true });
+      await firestoreRestUpsert('users', safeId, u);
     }
-    await batch.commit();
+
+    console.log(`Synced ${users.length} users to Firestore cloud database.`);
   } catch (err) {
-    console.error('Error syncing users to Firestore:', err);
+    console.warn('Firestore REST users sync notice:', err);
   }
 }
 
@@ -328,16 +426,25 @@ function loadStoredCourseModules() {
 }
 
 async function syncModulesToFirestore(modules: any[]) {
-  if (!db) return;
+  if (!firebaseConfig) return;
   try {
-    const batch = db.batch();
-    for (const m of modules) {
-      const docRef = db.collection('course_modules').doc(m.id || `mod-${m.moduleNumber}`);
-      batch.set(docRef, m, { merge: true });
+    const activeIds = new Set(modules.map((m) => m.id || `mod-${m.moduleNumber}`));
+
+    const snapshot = await firestoreRestList('course_modules');
+    for (const doc of snapshot) {
+      if (!activeIds.has(doc.id)) {
+        await firestoreRestDelete('course_modules', doc.id);
+      }
     }
-    await batch.commit();
+
+    for (const m of modules) {
+      const docId = m.id || `mod-${m.moduleNumber}`;
+      await firestoreRestUpsert('course_modules', docId, m);
+    }
+
+    console.log(`Synced ${modules.length} course modules to Firestore cloud database.`);
   } catch (err) {
-    console.error('Error syncing modules to Firestore:', err);
+    console.warn('Firestore REST modules sync notice:', err);
   }
 }
 
@@ -747,44 +854,47 @@ app.post('/api/course-modules', (req, res) => {
   res.status(400).json({ error: 'Payload de módulos inválido' });
 });
 
+app.delete('/api/course-modules/:id', (req, res) => {
+  const { id } = req.params;
+  let modules = loadStoredCourseModules();
+  modules = modules
+    .filter((m: any) => m.id !== id)
+    .map((m: any, idx: number) => ({
+      ...m,
+      moduleNumber: idx + 1,
+    }));
+  saveStoredCourseModules(modules);
+  res.json({ success: true, modules });
+});
+
 async function syncFromFirestoreOnBoot() {
-  if (!db) return;
+  if (!firebaseConfig) return;
   try {
-    // Load users from Firestore
-    const usersSnapshot = await db.collection('users').get();
-    if (!usersSnapshot.empty) {
-      const firestoreUsers: any[] = [];
-      usersSnapshot.forEach((doc: any) => firestoreUsers.push(doc.data()));
-      if (firestoreUsers.length > 0) {
-        ensureAdminInUsers(firestoreUsers);
-        inMemoryUsers = firestoreUsers;
-        fs.writeFileSync(USERS_FILE, JSON.stringify(firestoreUsers, null, 2), 'utf-8');
-        console.log(`Loaded ${firestoreUsers.length} users from Firestore cloud database.`);
-      }
+    const firestoreUsers = await firestoreRestList('users');
+    if (firestoreUsers.length > 0) {
+      ensureAdminInUsers(firestoreUsers);
+      inMemoryUsers = firestoreUsers;
+      fs.writeFileSync(USERS_FILE, JSON.stringify(firestoreUsers, null, 2), 'utf-8');
+      console.log(`Loaded ${firestoreUsers.length} users from Firestore cloud database.`);
     } else {
       const users = loadStoredUsers();
       await syncUsersToFirestore(users);
       console.log('Seeded default users into Firestore cloud database.');
     }
 
-    // Load course modules from Firestore
-    const modulesSnapshot = await db.collection('course_modules').get();
-    if (!modulesSnapshot.empty) {
-      const firestoreModules: any[] = [];
-      modulesSnapshot.forEach((doc: any) => firestoreModules.push(doc.data()));
-      if (firestoreModules.length > 0) {
-        firestoreModules.sort((a: any, b: any) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
-        inMemoryCourseModules = firestoreModules;
-        fs.writeFileSync(COURSE_MODULES_FILE, JSON.stringify(firestoreModules, null, 2), 'utf-8');
-        console.log(`Loaded ${firestoreModules.length} course modules from Firestore cloud database.`);
-      }
+    const firestoreModules = await firestoreRestList('course_modules');
+    if (firestoreModules.length > 0) {
+      firestoreModules.sort((a: any, b: any) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+      inMemoryCourseModules = firestoreModules;
+      fs.writeFileSync(COURSE_MODULES_FILE, JSON.stringify(firestoreModules, null, 2), 'utf-8');
+      console.log(`Loaded ${firestoreModules.length} course modules from Firestore cloud database.`);
     } else {
       const modules = loadStoredCourseModules();
       await syncModulesToFirestore(modules);
       console.log('Seeded default course modules into Firestore cloud database.');
     }
   } catch (err) {
-    console.error('Error syncing data from Firestore on boot:', err);
+    console.warn('Firestore REST boot sync notice:', err);
   }
 }
 

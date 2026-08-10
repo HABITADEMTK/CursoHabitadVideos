@@ -31,6 +31,7 @@ import {
   Phone,
   UserCheck,
   Upload,
+  Edit2,
 } from 'lucide-react';
 import { VideoSample, ChatAdminConfig, ChatMessage, UserAccount, CourseModule, CourseVideo } from '../types';
 import { extractYouTubeId, getYouTubeThumbnailUrl } from '../utils/youtube';
@@ -140,6 +141,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding, currentUs
   const [courseVideoDesc, setCourseVideoDesc] = useState('');
   const [courseVideoPrompt, setCourseVideoPrompt] = useState('');
   const [courseMsg, setCourseMsg] = useState('');
+
+  // Edit Course Video State
+  const [editingVideoKey, setEditingVideoKey] = useState<{ moduleId: string; videoId: string } | null>(null);
+  const [editCourseVideoTitle, setEditCourseVideoTitle] = useState('');
+  const [editCourseVideoUrl, setEditCourseVideoUrl] = useState('');
+  const [editCourseVideoDuration, setEditCourseVideoDuration] = useState('');
+  const [editCourseVideoDesc, setEditCourseVideoDesc] = useState('');
+  const [editCourseVideoPrompt, setEditCourseVideoPrompt] = useState('');
 
   // Create / Edit Module State
   const [showAddModuleForm, setShowAddModuleForm] = useState(false);
@@ -401,6 +410,45 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding, currentUs
       return mod;
     });
     handleSaveCourseModules(updatedModules);
+  };
+
+  const handleStartEditCourseVideo = (moduleId: string, video: CourseVideo) => {
+    setEditingVideoKey({ moduleId, videoId: video.id });
+    setEditCourseVideoTitle(video.title);
+    setEditCourseVideoUrl(video.videoUrl);
+    setEditCourseVideoDuration(video.duration || '08:30');
+    setEditCourseVideoDesc(video.description || '');
+    setEditCourseVideoPrompt(video.promptTemplate || '');
+  };
+
+  const handleSaveEditCourseVideo = (moduleId: string, videoId: string) => {
+    if (!editCourseVideoTitle.trim() || !editCourseVideoUrl.trim()) {
+      alert('El título y la URL del video son obligatorios.');
+      return;
+    }
+
+    const updatedModules = courseModules.map((mod) => {
+      if (mod.id === moduleId) {
+        const updatedVideos = (mod.videos || []).map((v) => {
+          if (v.id === videoId) {
+            return {
+              ...v,
+              title: editCourseVideoTitle.trim(),
+              videoUrl: editCourseVideoUrl.trim(),
+              duration: editCourseVideoDuration.trim() || '08:30',
+              description: editCourseVideoDesc.trim() || 'Video explicativo de la lección.',
+              promptTemplate: editCourseVideoPrompt.trim() || undefined,
+            };
+          }
+          return v;
+        });
+        return { ...mod, videos: updatedVideos };
+      }
+      return mod;
+    });
+
+    handleSaveCourseModules(updatedModules);
+    setEditingVideoKey(null);
   };
 
   const handleCreateModule = (e: React.FormEvent) => {
@@ -1300,32 +1348,156 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding, currentUs
                         Este módulo no tiene clases registradas.
                       </p>
                     ) : (
-                      (mod.videos || []).map((vid) => (
-                        <div
-                          key={vid.id}
-                          className="bg-neutral-950 border border-neutral-800 p-4 rounded-2xl flex items-center justify-between gap-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-mono text-xs font-bold shrink-0">
-                              <Video className="w-4 h-4" />
+                      (mod.videos || []).map((vid) => {
+                        const isEditingThisVideo =
+                          editingVideoKey?.moduleId === mod.id && editingVideoKey?.videoId === vid.id;
+
+                        if (isEditingThisVideo) {
+                          return (
+                            <div
+                              key={vid.id}
+                              className="bg-neutral-950 border border-amber-500/40 p-4 rounded-2xl space-y-3 shadow-lg"
+                            >
+                              <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                  Editar Clase / Video: {vid.title}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                                    Título de la Clase
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editCourseVideoTitle}
+                                    onChange={(e) => setEditCourseVideoTitle(e.target.value)}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                    placeholder="Ej. Lección 1: Clonación de Voz con IA"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                                    Enlace / URL del Video (YouTube, Shorts, MP4)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editCourseVideoUrl}
+                                    onChange={(e) => setEditCourseVideoUrl(e.target.value)}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                                    Duración Estimada
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editCourseVideoDuration}
+                                    onChange={(e) => setEditCourseVideoDuration(e.target.value)}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                                    placeholder="08:30"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                                    Descripción o Instrucciones
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editCourseVideoDesc}
+                                    onChange={(e) => setEditCourseVideoDesc(e.target.value)}
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                    placeholder="Detalles sobre las herramientas explicadas..."
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-bold text-neutral-300 mb-1">
+                                  Prompt o Plantilla Copiable (Opcional)
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  value={editCourseVideoPrompt}
+                                  onChange={(e) => setEditCourseVideoPrompt(e.target.value)}
+                                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                                  placeholder="Escribe el prompt exacto para copiar..."
+                                />
+                              </div>
+
+                              <div className="flex gap-2 justify-end pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingVideoKey(null)}
+                                  className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditCourseVideo(mod.id, vid.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Save className="w-3.5 h-3.5" />
+                                  <span>Guardar Clase</span>
+                                </button>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-white">{vid.title}</h4>
-                              <p className="text-[10px] text-neutral-400 font-mono truncate max-w-md">
-                                {vid.videoUrl} • {vid.duration}
-                              </p>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={vid.id}
+                            className="bg-neutral-950 border border-neutral-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-mono text-xs font-bold shrink-0 mt-0.5">
+                                <Video className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-white truncate">{vid.title}</h4>
+                                <p className="text-[10px] text-neutral-400 font-mono truncate max-w-md">
+                                  {vid.videoUrl} • {vid.duration}
+                                </p>
+                                {vid.description && (
+                                  <p className="text-[11px] text-neutral-400 mt-0.5 line-clamp-1">
+                                    {vid.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                              <button
+                                onClick={() => handleStartEditCourseVideo(mod.id, vid)}
+                                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 cursor-pointer flex items-center gap-1 text-xs font-bold transition-colors"
+                                title="Editar esta clase del módulo"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteCourseVideo(mod.id, vid.id)}
+                                className="p-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-500/30 cursor-pointer transition-colors"
+                                title="Eliminar esta clase del módulo"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
-
-                          <button
-                            onClick={() => handleDeleteCourseVideo(mod.id, vid.id)}
-                            className="p-2 rounded-xl bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-500/30 cursor-pointer"
-                            title="Eliminar esta clase del módulo"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
