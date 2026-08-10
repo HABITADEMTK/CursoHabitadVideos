@@ -1,0 +1,6 @@
+{
+  "name": "Hábitad marketing inmobiliario",
+  "description": "Página de venta y landing page para curso de creación de anuncios de bienes raíces con IA en 20 minutos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
