@@ -7,7 +7,9 @@ import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const rawPort = process.env.PORT;
+const PORT: number | string =
+  rawPort && !isNaN(Number(rawPort)) ? Number(rawPort) : rawPort || 3000;
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
@@ -787,8 +789,6 @@ async function syncFromFirestoreOnBoot() {
 }
 
 async function startServer() {
-  await syncFromFirestoreOnBoot();
-
   const distPath = path.join(process.cwd(), 'dist');
   const distIndex = path.join(distPath, 'index.html');
   const hasDist = fs.existsSync(distIndex);
@@ -806,8 +806,19 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  if (typeof PORT === 'number') {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+  } else {
+    app.listen(PORT, () => {
+      console.log(`Server running on socket/port ${PORT}`);
+    });
+  }
+
+  // Non-blocking sync from Firestore so server starts immediately on Hostgator/cPanel
+  syncFromFirestoreOnBoot().catch((err) => {
+    console.error('Background Firestore boot sync failed:', err);
   });
 }
 
