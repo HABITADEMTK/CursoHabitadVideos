@@ -24,8 +24,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'oxxo' | 'spei' | 'paypal'>('spei');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Close on Escape key press
+  // Close on Escape key press & Track InitiateCheckout
   useEffect(() => {
+    if (isOpen && (window as any).fbq) {
+      (window as any).fbq('track', 'InitiateCheckout', {
+        value: 1099,
+        currency: 'MXN',
+      });
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -79,6 +86,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           status: 'pending',
         }),
       });
+
+      if ((window as any).fbq) {
+        (window as any).fbq('track', 'Purchase', {
+          value: 1099,
+          currency: 'MXN',
+          content_name: 'Curso Creación de Anuncios Inmobiliarios en Video con IA',
+        });
+        (window as any).fbq('track', 'Lead');
+      }
 
       if (paymentMethod === 'paypal') {
         window.open('https://www.paypal.com/ncp/payment/JCFR6P8KB9KVN', '_blank');

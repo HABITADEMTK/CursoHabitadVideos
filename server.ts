@@ -563,9 +563,9 @@ app.delete('/api/users/:email', (req, res) => {
   res.json({ success: true, users });
 });
 
-// Google Authentication Endpoint with Google Account Verification & Registration
+// Google Authentication Endpoint for Existing Paid/Registered Users
 app.post('/api/auth/google', (req, res) => {
-  const { email, name, avatarUrl, isPaid, whatsapp, isPending } = req.body;
+  const { email, name, avatarUrl, isPaid, whatsapp, isPending, isLogin } = req.body;
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ error: 'Proporciona una cuenta de correo válida' });
   }
@@ -581,6 +581,13 @@ app.post('/api/auth/google', (req, res) => {
   const isAdminEmail =
     normalizedEmail === 'salvadoraliadosdigitales@gmail.com' ||
     normalizedEmail === 'humanlabs002@gmail.com';
+
+  // If this is a login attempt and the user doesn't exist, reject registration
+  if (isLogin && !user) {
+    return res.status(403).json({
+      error: 'No existe una cuenta registrada con este correo. El registro se realiza únicamente al comprar el curso en la ventana de pago.',
+    });
+  }
 
   const defaultStatus = isAdminEmail ? 'paid' : (isPending || isPaid ? 'pending' : 'free');
 

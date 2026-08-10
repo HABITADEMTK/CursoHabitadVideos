@@ -164,8 +164,7 @@ export default function App() {
       {/* Sticky top promotional notice header */}
       <Header
         onCheckout={() => setIsCheckoutOpen(true)}
-        onStartFreeClass={() => setIsCheckoutOpen(true)}
-        onGoToCourse={openCourse}
+        onOpenLogin={() => setIsGoogleAuthOpen(true)}
         currentUser={currentUser}
       />
 

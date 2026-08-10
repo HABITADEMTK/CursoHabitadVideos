@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Clock, Zap, Sparkles } from 'lucide-react';
+import { ShieldCheck, Clock, Zap, Sparkles, LogIn } from 'lucide-react';
 
 interface HeaderProps {
   onCheckout: () => void;
-  onGoToCourse?: () => void;
-  onStartFreeClass?: () => void;
+  onOpenLogin?: () => void;
   currentUser?: any;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onCheckout,
-  onGoToCourse,
-  onStartFreeClass,
+  onOpenLogin,
   currentUser,
 }) => {
   const [timeLeft, setTimeLeft] = useState({ minutes: 14, seconds: 59 });
@@ -45,12 +43,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {onGoToCourse && (
+          {onOpenLogin && (
             <button
-              onClick={onGoToCourse}
-              className="text-xs font-bold text-neutral-300 hover:text-white bg-neutral-900 border border-neutral-700 hover:border-amber-500/50 px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5"
+              onClick={onOpenLogin}
+              className="text-xs font-bold text-neutral-300 hover:text-white bg-neutral-900 border border-neutral-700 hover:border-amber-500/50 px-3.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>{currentUser ? `Portal Alumnos (${currentUser.name.split(' ')[0]})` : 'Ver Curso'}</span>
+              <LogIn className="w-3.5 h-3.5 text-amber-400" />
+              <span>Inicia sesión</span>
             </button>
           )}
 
