@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "Alumnos, afiliados y administradores registrados en la plataforma",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "addedAt": { "type": "string" },
+        "hasCourseAccess": { "type": "boolean" }
+      },
+      "required": ["email", "name"]
+    },
+    "course_modules": {
+      "title": "Course Modules",
+      "description": "Módulos y lecciones del curso",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "moduleNumber": { "type": "number" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "videos": { "type": "array" }
+      },
+      "required": ["id", "moduleNumber", "title"]
+    },
+    "app_config": {
+      "title": "App Config",
+      "description": "Configuraciones globales como videos e intro",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    }
+  }
+}
