@@ -20,7 +20,7 @@ interface FloatingChatWidgetProps {
 }
 
 const QUICK_QUESTIONS = [
-  '¿Cuándo es la clase en vivo por Google Meet?',
+  '¿Cómo puedo acceder al curso completo?',
   '¿Qué herramientas incluye el curso?',
   '¿Necesito experiencia previa?',
   '¿Cómo realizo mi pago e inscripción?',
@@ -35,7 +35,7 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState(
-    '¡Hola! 👋 Soy el asesor virtual con IA de Hábitad | Marketing inmobiliario. ¿Tienes alguna duda sobre el curso en vivo por Google Meet del viernes 14 de Agosto?'
+    '¡Hola! 👋 Soy el asesor virtual con IA de Hábitad | Marketing inmobiliario. ¿Tienes alguna duda sobre el curso de Creación de Anuncios Inmobiliarios en Video con IA?'
   );
 
   // Voice Interaction States
@@ -463,7 +463,7 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({
             <div className="bg-neutral-950 border-t border-amber-500/20 px-3 py-2 flex items-center justify-between text-xs">
               <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Curso en vivo 14 de Agosto 19:00 hrs</span>
+                <span>Acceso inmediato e ilimitado</span>
               </span>
               <button
                 onClick={() => {

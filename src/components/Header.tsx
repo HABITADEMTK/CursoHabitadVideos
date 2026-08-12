@@ -32,13 +32,13 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-neutral-950/90 backdrop-blur-md border-b border-amber-500/20 py-2.5 px-4 text-xs sm:text-sm">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-neutral-300">
         <div className="flex items-center gap-2 font-medium">
-          <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-amber-400 font-bold uppercase tracking-wider text-xs">
-            CURSO EN VIVO POR GOOGLE MEET
+            CURSO PRÁCTICO 100% ONLINE
           </span>
           <span className="hidden md:inline text-neutral-600">|</span>
           <span className="hidden md:inline text-neutral-300">
-            Viernes 14 de Agosto · 19:00 hrs (Hora CDMX)
+            Acceso Inmediato de por Vida · Aprende a tu Ritmo
           </span>
         </div>
 

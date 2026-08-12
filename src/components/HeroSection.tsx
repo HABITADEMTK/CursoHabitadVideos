@@ -27,8 +27,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           transition={{ duration: 0.5 }}
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/50 bg-amber-950/60 text-amber-300 text-xs font-bold uppercase tracking-widest mb-6 shadow-inner"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-          <span>🔴 CURSO EN VIVO POR GOOGLE MEET · VIERNES 14 DE AGOSTO 19:00 HRS (CDMX)</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>✨ CURSO 100% PRÁCTICO EN VIDEO · ACCESO INMEDIATO Y DE POR VIDA</span>
         </motion.div>
 
         {/* Main Headline */}
@@ -57,7 +57,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           Aprende a generar videos publicitarios profesionales para vender casas, terrenos y departamentos, desde tu computadora.
         </motion.p>
 
-        {/* Prominent Google Meet Live Notice Card */}
+        {/* Prominent Instant Access Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -66,14 +66,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         >
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center shrink-0 text-2xl shadow-inner">
-              📹
+              🎬
             </div>
             <div>
               <span className="text-[11px] font-extrabold text-amber-400 uppercase tracking-widest block mb-0.5">
-                • FECHA DE IMPARTICIÓN EN VIVO
+                • ACCESO COMPLETO E INMEDIATO
               </span>
               <p className="text-sm sm:text-base font-black text-white leading-snug">
-                El curso es en vivo por Google Meet el viernes 14 de Agosto a las 19 hrs (hora del centro de México).
+                Accede a todos los módulos en video, plantillas y herramientas desde cualquier dispositivo a tu propio ritmo.
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onClick={onOpenCheckout}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shrink-0 cursor-pointer shadow-md transform hover:scale-105"
           >
-            Asegurar Lugar
+            Obtener Acceso
           </button>
         </motion.div>
 
@@ -114,7 +114,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         <p className="text-xs sm:text-sm text-neutral-300 font-medium tracking-wide flex items-center justify-center gap-1.5 mt-4">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>Lugar reservado al confirmar tu pago · Incluye acceso a las herramientas y Canva Pro por 1 año</span>
+          <span>Acceso inmediato al confirmar tu pago · Incluye acceso a las herramientas y Canva Pro por 1 año</span>
         </p>
       </div>
     </section>

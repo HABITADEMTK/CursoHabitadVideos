@@ -112,12 +112,12 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               className="w-full py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-neutral-950 font-black text-base sm:text-lg uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:shadow-[0_0_50px_rgba(245,158,11,0.65)] transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5 fill-neutral-950 text-neutral-950" />
-              <span>INICIA AHORA Y ASEGURA TU LUGAR</span>
+              <span>INICIA AHORA - ACCESO INMEDIATO</span>
             </button>
 
             <p className="text-xs sm:text-sm text-neutral-300 font-medium tracking-wide flex items-center justify-center gap-1.5 pt-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>📹 Incluye acceso al curso en vivo por Google Meet el viernes 14 de Agosto a las 19:00 hrs CDMX</span>
+              <span>📹 Incluye acceso inmediato a todas las lecciones en video, plantillas de prompts y herramientas</span>
             </p>
           </div>
         </motion.div>

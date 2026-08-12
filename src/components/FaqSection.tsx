@@ -6,9 +6,9 @@ import { FaqItem } from '../types';
 const FAQ_ITEMS: FaqItem[] = [
   {
     id: 'faq-0',
-    question: '¿Cuándo y cómo es la clase en vivo?',
+    question: '¿Cómo accedo al curso y cuándo puedo empezar?',
     answer:
-      'El curso es en vivo por Google Meet el viernes 14 de Agosto a las 19 hrs (hora del centro de méxico). Al inscribirte obtienes acceso a la sala en vivo, a las herramientas incluidas (mejorami.casa, Avatar Creator Pro, Canva pro por un año) y a todas las grabaciones para consultar cuando quieras.',
+      'El curso es 100% online y grabado en video HD para que aprendas a tu propio ritmo. Al inscribirte obtienes acceso inmediato e ilimitado a la plataforma de alumnos, a las lecciones en video, a las herramientas incluidas (mejorami.casa, Avatar Creator Pro, Canva Pro por un año) y a todos los materiales descargables.',
   },
   {
     id: 'faq-1',
