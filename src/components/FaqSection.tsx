@@ -8,7 +8,7 @@ const FAQ_ITEMS: FaqItem[] = [
     id: 'faq-0',
     question: '¿Cómo accedo al curso y cuándo puedo empezar?',
     answer:
-      'El curso es 100% online y grabado en video HD para que aprendas a tu propio ritmo. Al inscribirte obtienes acceso inmediato e ilimitado a la plataforma de alumnos, a las lecciones en video, a las herramientas incluidas (mejorami.casa, Avatar Creator Pro, Canva Pro por un año) y a todos los materiales descargables.',
+      'El curso es 100% online y grabado en video HD para que aprendas a tu propio ritmo. Al inscribirte obtienes acceso inmediato e ilimitado a la plataforma de alumnos, a las lecciones en video, a las herramientas incluidas (mejorami.casa con 50 créditos mensuales, Avatar Creator Pro con 50 créditos mensuales, Canva Pro por un año) y a todos los materiales descargables.',
   },
   {
     id: 'faq-1',
@@ -48,9 +48,9 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: 'faq-7',
-    question: '¿El pago es mensual?',
+    question: '¿Cómo funciona la suscripción de $9 USD al mes y qué métodos de pago aceptan?',
     answer:
-      'No, es un pago único de $1,099 MXN. Obtienes acceso de por vida al programa, a las plantillas y a todas las actualizaciones futuras sin mensualidades ni cargos recurrentes.',
+      'El programa tiene un precio de lanzamiento exclusivo de solo $9 USD mensuales (antes $59 USD). El pago se procesa de forma 100% segura mediante suscripción oficial de PayPal, que acepta tarjetas de débito, crédito o saldo PayPal. Al finalizar el pago en PayPal, regresarás automáticamente al curso con acceso ilimitado a todas las lecciones en video y a tus 50 créditos mensuales en mejorami.casa y Avatar Creator Pro.',
   },
 ];
 

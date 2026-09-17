@@ -38,15 +38,73 @@ export default function App() {
     };
   });
 
+  const [paymentSuccessNotice, setPaymentSuccessNotice] = useState(false);
+
   const [currentView, setCurrentView] = useState<'landing' | 'course' | 'admin'>(() => {
     if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isPayPalReturn =
+        searchParams.has('subscription_id') ||
+        searchParams.has('ba_token') ||
+        searchParams.has('token') ||
+        searchParams.has('plan_id') ||
+        searchParams.get('status') === 'success' ||
+        searchParams.get('payment') === 'success' ||
+        searchParams.get('subscription') === 'success';
+
       if (window.location.pathname === '/admin') return 'admin';
-      if (window.location.pathname === '/curso') return 'course';
+      if (window.location.pathname === '/curso' || isPayPalReturn) return 'course';
     }
     return 'landing';
   });
 
   useEffect(() => {
+    // Check if returning from PayPal subscription checkout
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isPayPalReturn =
+        searchParams.has('subscription_id') ||
+        searchParams.has('ba_token') ||
+        searchParams.has('token') ||
+        searchParams.has('plan_id') ||
+        searchParams.get('status') === 'success' ||
+        searchParams.get('payment') === 'success' ||
+        searchParams.get('subscription') === 'success';
+
+      if (isPayPalReturn) {
+        setPaymentSuccessNotice(true);
+        try {
+          const savedUserStr = localStorage.getItem('anuncios_ia_current_user');
+          if (savedUserStr) {
+            const user = JSON.parse(savedUserStr);
+            user.hasCourseAccess = true;
+            user.status = 'paid';
+            user.isPaid = true;
+            localStorage.setItem('anuncios_ia_current_user', JSON.stringify(user));
+            setCurrentUser(user);
+
+            // Notify backend of paid status
+            fetch('/api/users/upgrade-paid', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: user.email,
+                name: user.name,
+                whatsapp: user.whatsapp,
+                status: 'paid',
+              }),
+            }).catch(console.warn);
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+
+        // Navigate cleanly to /curso
+        window.history.replaceState({}, '', '/curso');
+        setCurrentView('course');
+      }
+    }
+
     const handlePopState = () => {
       if (window.location.pathname === '/admin') {
         setCurrentView('admin');
@@ -143,6 +201,8 @@ export default function App() {
           onOpenAdmin={openAdmin}
           onGoToLanding={backToLanding}
           onOpenCheckout={() => setIsCheckoutOpen(true)}
+          showPaymentSuccessNotice={paymentSuccessNotice}
+          onDismissSuccessNotice={() => setPaymentSuccessNotice(false)}
         />
         <GoogleAuthModal
           isOpen={isGoogleAuthOpen}
@@ -210,7 +270,7 @@ export default function App() {
       {/* Floating AI Chat Assistant Widget for Prospects */}
       <FloatingChatWidget
         onOpenCheckout={() => setIsCheckoutOpen(true)}
-        onStartFreeClass={() => setIsGoogleAuthOpen(true)}
+        onStartFreeClass={() => setIsCheckoutOpen(true)}
       />
 
       {/* Interactive Modals */}

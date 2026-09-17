@@ -114,7 +114,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         <p className="text-xs sm:text-sm text-neutral-300 font-medium tracking-wide flex items-center justify-center gap-1.5 mt-4">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>Acceso inmediato al confirmar tu pago · Incluye acceso a las herramientas y Canva Pro por 1 año</span>
+          <span>Acceso inmediato · Solo $9 USD/mes · Incluye 50 créditos mensuales en herramientas y Canva Pro por 1 año</span>
         </p>
       </div>
     </section>

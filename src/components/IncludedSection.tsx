@@ -74,13 +74,13 @@ export const IncludedSection: React.FC<IncludedSectionProps> = ({ onOpenPromptDe
             <li className="flex items-start gap-3.5 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
               <Check className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <span>
-                <strong className="text-white font-bold">Herramienta mejorami.casa</strong> para mejora de imágenes inmobiliarias (50 créditos)
+                <strong className="text-white font-bold">Herramienta mejorami.casa</strong> para mejora de imágenes inmobiliarias (50 créditos mensuales)
               </span>
             </li>
             <li className="flex items-start gap-3.5 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
               <Check className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <span>
-                <strong className="text-white font-bold">Avatar Creator Pro</strong> para creación de avatares hiperrealistas (50 créditos)
+                <strong className="text-white font-bold">Avatar Creator Pro</strong> para creación de avatares hiperrealistas (50 créditos mensuales)
               </span>
             </li>
             <li className="flex items-start gap-3.5 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">

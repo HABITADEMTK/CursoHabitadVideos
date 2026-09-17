@@ -47,6 +47,7 @@ export interface UserAccount {
   createdBy?: string;
   addedAt: string;
   hasCourseAccess: boolean;
+  isPaid?: boolean;
 }
 
 export interface CourseResource {

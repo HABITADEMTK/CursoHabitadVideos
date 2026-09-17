@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, CheckCircle2, ShieldCheck, Zap, CreditCard, Sparkles, Copy, Check, Phone, MessageSquare } from 'lucide-react';
+import { X, Lock, CheckCircle2, ShieldCheck, Sparkles, Phone, Mail, User, Check, ExternalLink, ArrowRight } from 'lucide-react';
+import { UserAccount } from '../types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -9,28 +10,32 @@ interface CheckoutModalProps {
   onGoToCourse?: (userEmail?: string, userName?: string) => void;
 }
 
+const PAYPAL_SUBSCRIBE_URL = 'https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-4UG817674T7108159NKVTWKQ';
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
   onOpenManager,
   onGoToCourse,
 }) => {
-  const [step, setStep] = useState<'checkout' | 'success'>('checkout');
+  const [step, setStep] = useState<'form' | 'redirecting'>('form');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [copiedClabe, setCopiedClabe] = useState(false);
-  const [copiedOxxoAcc, setCopiedOxxoAcc] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'oxxo' | 'spei' | 'paypal'>('spei');
   const [isLoading, setIsLoading] = useState(false);
 
   // Close on Escape key press & Track InitiateCheckout
   useEffect(() => {
-    if (isOpen && (window as any).fbq) {
-      (window as any).fbq('track', 'InitiateCheckout', {
-        value: 1099,
-        currency: 'MXN',
-      });
+    if (isOpen) {
+      setStep('form');
+      setIsLoading(false);
+      if ((window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', {
+          value: 9,
+          currency: 'USD',
+          content_name: 'Suscripción Curso Creación de Anuncios Inmobiliarios en Video con IA',
+        });
+      }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,75 +49,84 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleCopyClabe = () => {
-    navigator.clipboard.writeText('721180100049182350');
-    setCopiedClabe(true);
-    setTimeout(() => setCopiedClabe(false), 2500);
-  };
-
-  const handleCopyOxxo = () => {
-    navigator.clipboard.writeText('2242170650133700');
-    setCopiedOxxoAcc(true);
-    setTimeout(() => setCopiedOxxoAcc(false), 2500);
-  };
-
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !name.trim() || !whatsapp.trim()) {
+      return;
+    }
+
     setIsLoading(true);
 
+    const userEmail = email.trim().toLowerCase();
+    const userName = name.trim();
+    const userWhatsapp = whatsapp.trim();
+
+    // Prepare active student account
+    const registeredUser: UserAccount = {
+      id: `user-${Date.now()}`,
+      email: userEmail,
+      name: userName,
+      whatsapp: userWhatsapp,
+      role: 'student',
+      status: 'paid',
+      hasCourseAccess: true,
+      isPaid: true,
+      addedAt: new Date().toISOString().split('T')[0],
+    };
+
+    // Save session in local storage so upon returning they are logged in with full access
     try {
-      // Register or authenticate the buyer as 'pending' in the system
-      const userEmail = email.trim() || 'alumno.nuevo@gmail.com';
-      const userName = name.trim() || 'Nuevo Alumno';
-
-      await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          name: userName,
-          whatsapp: whatsapp.trim(),
-          isPending: true,
-        }),
-      });
-
-      await fetch('/api/users/upgrade-paid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          name: userName,
-          whatsapp: whatsapp.trim(),
-          status: 'pending',
-        }),
-      });
-
-      if ((window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
-          value: 1099,
-          currency: 'MXN',
-          content_name: 'Curso Creación de Anuncios Inmobiliarios en Video con IA',
-        });
-        (window as any).fbq('track', 'Lead');
-      }
-
-      if (paymentMethod === 'paypal') {
-        window.open('https://www.paypal.com/ncp/payment/JCFR6P8KB9KVN', '_blank');
-      }
-
-      setIsLoading(false);
-      setStep('success');
+      localStorage.setItem('anuncios_ia_current_user', JSON.stringify(registeredUser));
+      localStorage.setItem('anuncios_ia_pending_buyer', JSON.stringify(registeredUser));
     } catch (err) {
-      setIsLoading(false);
-      setStep('success');
+      console.warn('LocalStorage error:', err);
     }
+
+    // Register user in backend
+    try {
+      await Promise.allSettled([
+        fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userEmail,
+            name: userName,
+            whatsapp: userWhatsapp,
+            isPaid: true,
+          }),
+        }),
+        fetch('/api/users/upgrade-paid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userEmail,
+            name: userName,
+            whatsapp: userWhatsapp,
+            status: 'paid',
+          }),
+        }),
+      ]);
+    } catch (err) {
+      console.warn('Backend registration notice:', err);
+    }
+
+    if ((window as any).fbq) {
+      (window as any).fbq('track', 'Lead');
+    }
+
+    setStep('redirecting');
+    setIsLoading(false);
+
+    // Redirect to PayPal subscription
+    setTimeout(() => {
+      window.location.href = PAYPAL_SUBSCRIBE_URL;
+    }, 700);
   };
 
-  const handleEnterCoursePortal = () => {
-    setStep('checkout');
+  const handleEnterCourseDirectly = () => {
     onClose();
     if (onGoToCourse) {
-      onGoToCourse(email.trim() || 'salvadoraliadosdigitales@gmail.com', name.trim() || 'Alumno');
+      onGoToCourse(email.trim() || 'alumno@ejemplo.com', name.trim() || 'Alumno');
     }
   };
 
@@ -126,14 +140,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative bg-neutral-900 border border-amber-500/30 rounded-3xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(245,158,11,0.25)] my-auto max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative bg-neutral-900 border border-amber-500/30 rounded-3xl max-w-lg w-full text-white shadow-[0_0_50px_rgba(245,158,11,0.25)] my-auto max-h-[92vh] flex flex-col overflow-hidden"
       >
         {/* Fixed Header with Title & Close Button */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-800 bg-neutral-900/95 shrink-0 relative pr-14">
           <div>
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-0.5">
               <ShieldCheck className="w-4 h-4 shrink-0 text-amber-400" />
-              <span>PROCESO DE PAGO SEGURO</span>
+              <span>REGISTRO Y SUSCRIPCIÓN SEGURA</span>
             </div>
             <h3 className="text-lg sm:text-2xl font-black text-white leading-tight">Acceso Completo al Curso</h3>
           </div>
@@ -148,47 +162,79 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Modal Body */}
+        {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-          {step === 'checkout' ? (
+          {step === 'form' ? (
             <div>
-              <p className="text-xs text-neutral-400 mb-4">
-                Creación de Anuncios Inmobiliarios en Video con IA
+              <p className="text-xs text-neutral-400 mb-3">
+                Creación de Anuncios Inmobiliarios en Video con IA · Acceso Inmediato
               </p>
 
               {/* Price Summary Banner */}
-              <div className="bg-neutral-950 p-3.5 sm:p-4 rounded-2xl border border-neutral-800 mb-4 flex items-center justify-between">
+              <div className="bg-neutral-950 p-3.5 sm:p-4 rounded-2xl border border-neutral-800 mb-3.5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-neutral-400 block font-medium">Pago único de lanzamiento</span>
-                  <span className="text-2xl font-black text-amber-400">$1,099 MXN</span>
+                  <span className="text-xs text-neutral-400 block font-medium">Suscripción mensual de lanzamiento</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-amber-400">$9</span>
+                    <span className="text-sm font-bold text-amber-400/90">USD / mes</span>
+                    <span className="text-xs text-neutral-400 ml-1">(~$180 MXN)</span>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="line-through text-xs text-neutral-500 font-mono">$1,999 MXN</span>
-                  <span className="block text-[11px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                    Ahorras $900 MXN
+                  <span className="line-through text-xs text-neutral-500 font-mono block">$59 USD / mes</span>
+                  <span className="inline-block text-[11px] font-bold text-emerald-400 bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-500/30">
+                    Ahorras $50 USD/mes
                   </span>
                 </div>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmitPayment} className="space-y-4 text-left">
+              {/* Tool Credits & Feature Callout */}
+              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl mb-4 text-left text-xs text-neutral-300 space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-amber-300">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Beneficios incluidos en tu suscripción:</span>
+                </div>
+                <ul className="space-y-1 text-[11px] text-neutral-200 pl-1">
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      <strong className="text-white">50 créditos mensuales</strong> en la herramienta <strong className="text-amber-300">mejorami.casa</strong>
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      <strong className="text-white">50 créditos mensuales</strong> en <strong className="text-amber-300">Avatar Creator Pro</strong>
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Acceso completo e ilimitado a todas las lecciones en video HD y Canva Pro</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Registration Form */}
+              <form onSubmit={handleSubmitPayment} className="space-y-3.5 text-left">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1">
-                    Tu Nombre Completo
+                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Tu Nombre Completo</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Juan Pérez"
+                    placeholder="Ej. Roberto Sánchez"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1">
-                    Correo Electrónico
+                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Correo Electrónico</span>
                   </label>
                   <input
                     type="email"
@@ -196,11 +242,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="tu.correo@ejemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
                   />
                 </div>
 
-                {/* WhatsApp Field */}
                 <div>
                   <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
@@ -215,265 +260,99 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="+52 55 1234 5678"
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono transition-colors"
                   />
-                  <p className="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>En tu WhatsApp recibirás el acceso directo a la plataforma.</span>
+                  <p className="text-[11px] text-emerald-400 font-medium mt-1">
+                    Recibirás las credenciales de acceso y recordatorios directamente a tu WhatsApp.
                   </p>
                 </div>
 
-                {/* Payment selection */}
-                <div>
-                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">
-                    Método de Pago
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('spei')}
-                      className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'spei'
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-400'
-                      }`}
-                    >
-                      <Zap className="w-4 h-4 text-amber-400" />
-                      <span>SPEI / Transfer</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('paypal')}
-                      className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'paypal'
-                          ? 'bg-blue-500/20 border-blue-500 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-400'
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4 text-blue-400" />
-                      <span>PayPal</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('oxxo')}
-                      className={`py-2 px-2.5 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        paymentMethod === 'oxxo'
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-400'
-                      }`}
-                    >
-                      <Lock className="w-4 h-4 text-amber-400" />
-                      <span>OXXO / SPIN</span>
-                    </button>
+                {/* Exclusive PayPal Payment Box */}
+                <div className="bg-neutral-950 p-4 rounded-2xl border border-blue-500/40 space-y-2.5 mt-2">
+                  <div className="flex items-center justify-between bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black italic tracking-tighter text-blue-400">PayPal</span>
+                      <span className="text-[11px] font-bold text-blue-200">Suscripción Oficial</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-300 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-500/30">
+                      $9 USD / mes
+                    </span>
                   </div>
+
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    El pago se realiza de forma 100% segura mediante la suscripción oficial de <strong>PayPal</strong>. Acepta Tarjeta de Crédito, Débito o Saldo PayPal. Cancela en cualquier momento sin penalizaciones.
+                  </p>
                 </div>
 
-                {/* PayPal Box Details */}
-                {paymentMethod === 'paypal' && (
-                  <div className="bg-neutral-950 p-4 rounded-2xl border border-blue-500/40 space-y-3">
-                    <div className="flex items-center justify-between bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-xl">
-                      <span className="text-[11px] font-bold text-blue-300 flex items-center gap-1.5">
-                        💳 <span>Pago seguro internacional con PayPal / Tarjeta</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-blue-400 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-500/30">
-                        PayPal Checkout
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-neutral-300 leading-relaxed">
-                      Al hacer clic en pagar, tus datos se registrarán con estatus <strong className="text-amber-400">Pendiente</strong> y se abrirá la pasarela oficial de PayPal para tu pago de <strong>$1,099 MXN</strong>.
-                    </p>
-
-                    <a
-                      href="https://www.paypal.com/ncp/payment/JCFR6P8KB9KVN"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
-                    >
-                      <span>Abrir Enlace Oficial de PayPal</span>
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </a>
-
-                    <div className="bg-neutral-900/80 p-3 rounded-xl border border-neutral-800 flex items-start gap-2 text-[11px] text-neutral-300 leading-snug">
-                      <Sparkles className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Redirect automático:</strong> Al finalizar en PayPal, la plataforma te devolverá a esta app y recibirás la confirmación de tu acceso.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* SPEI Details */}
-                {paymentMethod === 'spei' && (
-                  <div className="bg-neutral-950 p-4 rounded-2xl border border-amber-500/40 space-y-3">
-                    <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl">
-                      <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-                        🇲🇽 <span>Este proceso sólo aplica para México</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
-                        SPEI Directo
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                      <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-800">
-                        <span className="text-[10px] text-neutral-400 block font-mono uppercase">Banco</span>
-                        <span className="text-sm font-black text-white">Albo</span>
-                      </div>
-                      <div className="bg-neutral-900 p-2.5 rounded-xl border border-neutral-800">
-                        <span className="text-[10px] text-neutral-400 block font-mono uppercase">Nombre de la cuenta</span>
-                        <span className="text-xs font-bold text-amber-300 leading-tight block">Hábitad Marketing Inmobiliario</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-neutral-900 p-3 rounded-xl border border-amber-500/40">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-neutral-400 font-mono uppercase">CLABE Interbancaria</span>
-                        <button
-                          type="button"
-                          onClick={handleCopyClabe}
-                          className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-700 transition-colors"
-                        >
-                          {copiedClabe ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedClabe ? '¡Copiado!' : 'Copiar CLABE'}</span>
-                        </button>
-                      </div>
-                      <span className="text-base sm:text-lg font-black text-amber-400 font-mono tracking-wider block select-all">
-                        721180100049182350
-                      </span>
-                    </div>
-
-                    <div className="bg-neutral-900/80 p-3 rounded-xl border border-neutral-800 flex items-start gap-2 text-[11px] text-neutral-300 leading-snug">
-                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Nota de entrega:</strong> Realiza la transferencia de <strong>$1,099 MXN</strong>. <span className="text-amber-300 font-semibold underline decoration-amber-500">Recibirás el acceso en los próximos minutos</span> a tu WhatsApp y correo registrado.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* OXXO Details */}
-                {paymentMethod === 'oxxo' && (
-                  <div className="bg-neutral-950 p-4 rounded-2xl border border-amber-500/40 space-y-3">
-                    <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl">
-                      <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-                        🏪 <span>Depósito en Ventanilla OXXO</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30">
-                        SPIN BY OXXO
-                      </span>
-                    </div>
-
-                    <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 text-xs text-neutral-300 space-y-1">
-                      <p className="text-amber-300 font-bold">Instrucciones en caja:</p>
-                      <p className="leading-relaxed">
-                        En la caja de cualquier tienda OXXO indica que vas a realizar un pago o depósito a una cuenta <strong className="text-amber-400">SPIN BY OXXO</strong>.
-                      </p>
-                    </div>
-
-                    <div className="bg-neutral-900 p-3 rounded-xl border border-amber-500/40">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-neutral-400 font-mono uppercase">Número de Cuenta SPIN BY OXXO</span>
-                        <button
-                          type="button"
-                          onClick={handleCopyOxxo}
-                          className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-700 transition-colors"
-                        >
-                          {copiedOxxoAcc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedOxxoAcc ? '¡Copiado!' : 'Copiar Cuenta'}</span>
-                        </button>
-                      </div>
-                      <span className="text-lg sm:text-xl font-black text-amber-400 font-mono tracking-wider block select-all">
-                        2242 1706 5013 3700
-                      </span>
-                    </div>
-
-                    <div className="bg-emerald-950/40 p-3 rounded-xl border border-emerald-500/40 text-xs space-y-2">
-                      <p className="text-emerald-300 font-bold flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Confirmación y Activación del Curso:</span>
-                      </p>
-                      <p className="text-neutral-300 text-[11px] leading-relaxed">
-                        Envía la foto o captura de tu comprobante de pago al WhatsApp <strong className="text-emerald-400 font-mono text-xs">+52 2211 8620 18</strong> para activar tu curso de inmediato.
-                      </p>
-                      <a
-                        href="https://wa.me/522211862018?text=Hola,%20adjunto%20mi%20comprobante%20de%20pago%20en%20OXXO%20para%20activar%20mi%20curso."
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg transition-all shadow-md mt-1"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Enviar Comprobante (+52 2211 8620 18)</span>
-                      </a>
-                    </div>
-                  </div>
-                )}
-
+                {/* Submit button */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3.5 sm:py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 mt-4 cursor-pointer"
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-neutral-950 font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(245,158,11,0.35)] flex items-center justify-center gap-2 mt-4 cursor-pointer active:scale-98"
                 >
                   {isLoading ? (
-                    <span className="inline-block animate-spin font-bold">⏳ Registrando...</span>
+                    <span className="inline-block animate-pulse font-bold">Conectando con PayPal...</span>
                   ) : (
                     <>
                       <Lock className="w-4 h-4" />
-                      <span>
-                        {paymentMethod === 'spei'
-                          ? 'CONFIRMAR TRANSFERENCIA ($1,099 MXN)'
-                          : paymentMethod === 'paypal'
-                          ? 'PAGAR CON PAYPAL ($1,099 MXN)'
-                          : 'CONFIRMAR Y VER DATOS OXXO ($1,099 MXN)'}
-                      </span>
+                      <span>SUSCRIBIRME CON PAYPAL ($9 USD / MES)</span>
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
 
-                <div className="text-center text-[11px] text-neutral-400 flex items-center justify-center gap-1 mt-2 mx-auto">
+                <div className="text-center text-[11px] text-neutral-400 flex items-center justify-center gap-1.5 pt-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Garantía de satisfacción · Encriptación SSL de 256 bits</span>
+                  <span>Protección al comprador PayPal · Encriptación SSL de 256 bits</span>
                 </div>
               </form>
             </div>
           ) : (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4 border border-amber-500/40">
-                <CheckCircle2 className="w-10 h-10 text-amber-400" />
+            /* Redirecting step */
+            <div className="text-center py-6 space-y-5">
+              <div className="w-16 h-16 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/40 animate-pulse">
+                <ExternalLink className="w-8 h-8 text-blue-400" />
               </div>
 
-              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3.5 py-1 rounded-full border border-amber-500/30 inline-block mb-3 uppercase tracking-wider">
-                ⏳ ESTATUS DE CUENTA: PENDIENTE DE CONFIRMACIÓN
-              </span>
+              <div>
+                <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3.5 py-1 rounded-full border border-amber-500/30 inline-block mb-3 uppercase tracking-wider">
+                  🚀 REDIRIGIENDO A PAYPAL
+                </span>
+                <h3 className="text-2xl font-black text-white mb-2">Completando tu Suscripción</h3>
+                <p className="text-xs text-neutral-300 leading-relaxed max-w-sm mx-auto">
+                  Estamos abriendo la pasarela oficial de suscripción de PayPal para <strong className="text-white">{name || 'tu cuenta'}</strong> ({email}).
+                </p>
+              </div>
 
-              <h3 className="text-2xl font-black text-white mb-2">¡Registro Recibido, {name || 'Asesor'}!</h3>
-              <p className="text-xs text-neutral-300 leading-relaxed max-w-sm mx-auto mb-4">
-                Hemos registrado tu solicitud de pago de <strong>$1,099 MXN</strong>. Tu cuenta tiene estatus <strong className="text-amber-400 font-bold">Pendiente de Confirmación</strong> mientras se verifica la transferencia o depósito.
-              </p>
-
-              <div className="bg-neutral-950 p-4 rounded-2xl border border-amber-500/40 text-left space-y-2.5 mb-6">
-                <div className="flex items-center gap-2 text-xs text-amber-400 font-bold">
-                  <Sparkles className="w-4 h-4 shrink-0" />
-                  <span>ACCESO Y SINOPSIS DEL ESTATUS:</span>
+              <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 text-left space-y-2 text-xs text-neutral-300">
+                <div className="flex items-center gap-2 font-bold text-amber-400">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Al terminar tu pago en PayPal:</span>
                 </div>
-                <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  • Recibirás la activación a <strong>Estatus Premium</strong> en tu WhatsApp <strong className="text-emerald-400">{whatsapp || 'registrado'}</strong> y correo <strong className="text-amber-300">{email || 'registrado'}</strong> en los próximos minutos.
-                </p>
-                <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  • Mientras tanto, al ingresar a la plataforma puedes comenzar viendo la <strong className="text-amber-300">Clase Gratis (Video 1 del Módulo 1)</strong>.
-                </p>
-                <p className="text-[11px] text-neutral-400 italic pt-1 border-t border-neutral-800">
-                  Los módulos restantes se desbloquearán automáticamente en cuanto tu pago sea verificado por un administrador.
+                <p className="text-[11px] leading-relaxed text-neutral-300">
+                  PayPal te regresará automáticamente a la página de inicio del curso con todos los módulos y herramientas desbloqueados.
                 </p>
               </div>
 
-              <button
-                onClick={handleEnterCoursePortal}
-                className="w-full py-4 rounded-2xl bg-amber-500 text-neutral-950 font-black text-xs uppercase tracking-wider hover:bg-amber-400 transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
-              >
-                <span>INGRESAR A LA PLATAFORMA Y VER CLASE 1</span>
-                <Sparkles className="w-4 h-4" />
-              </button>
+              <div className="space-y-2.5 pt-2">
+                <a
+                  href={PAYPAL_SUBSCRIBE_URL}
+                  target="_self"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <span>Abrir PayPal Ahora si no cargó</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleEnterCourseDirectly}
+                  className="w-full py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span>¿Ya completaste el pago? Ir a la Página de Inicio del Curso</span>
+                  <CheckCircle2 className="w-4 h-4 text-neutral-950" />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -481,5 +360,3 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     </div>
   );
 };
-
-

@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-neutral-950 font-black text-xs px-3.5 py-1.5 rounded-full transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:scale-105 active:scale-95 cursor-pointer uppercase tracking-wider"
           >
             <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>INICIA AHORA ($1,099 MXN)</span>
+            <span>INICIA AHORA ($9 USD / mes)</span>
           </button>
         </div>
       </div>

@@ -35,6 +35,8 @@ interface CoursePageProps {
   onOpenAdmin: () => void;
   onGoToLanding: () => void;
   onOpenCheckout: () => void;
+  showPaymentSuccessNotice?: boolean;
+  onDismissSuccessNotice?: () => void;
 }
 
 export const CoursePage: React.FC<CoursePageProps> = ({
@@ -44,6 +46,8 @@ export const CoursePage: React.FC<CoursePageProps> = ({
   onOpenAdmin,
   onGoToLanding,
   onOpenCheckout,
+  showPaymentSuccessNotice,
+  onDismissSuccessNotice,
 }) => {
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [activeVideo, setActiveVideo] = useState<CourseVideo | null>(null);
@@ -109,7 +113,8 @@ export const CoursePage: React.FC<CoursePageProps> = ({
   const isPaidUser =
     currentUser?.role === 'admin' ||
     currentUser?.role === 'affiliate' ||
-    currentUser?.status === 'paid';
+    currentUser?.status === 'paid' ||
+    currentUser?.hasCourseAccess === true;
   const firstVideoId = modules[0]?.videos[0]?.id || 'v-1-1';
 
   const handleSelectVideo = (video: CourseVideo, moduleNum: number) => {
@@ -271,6 +276,34 @@ export const CoursePage: React.FC<CoursePageProps> = ({
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* LEFT COLUMN: Main Video Player & Lesson Details (8 Cols) */}
         <div className="lg:col-span-8 space-y-6">
+          {showPaymentSuccessNotice && (
+            <div className="bg-emerald-950/90 border border-emerald-500/70 p-4 sm:p-5 rounded-3xl flex items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                  <Award className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div className="text-left">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>¡Suscripción de PayPal Confirmada con Éxito!</span>
+                    <span className="text-[10px] bg-emerald-500 text-neutral-950 font-black px-2 py-0.5 rounded">Acceso Completo</span>
+                  </h4>
+                  <p className="text-xs text-neutral-300 mt-0.5">
+                    Bienvenido a la plataforma de inicio del curso. Tienes acceso completo e ilimitado a todos los videos y 50 créditos mensuales en mejorami.casa y Avatar Creator Pro.
+                  </p>
+                </div>
+              </div>
+              {onDismissSuccessNotice && (
+                <button
+                  onClick={onDismissSuccessNotice}
+                  className="text-neutral-400 hover:text-white p-1 rounded-lg shrink-0 cursor-pointer"
+                  title="Cerrar aviso"
+                >
+                  <Check className="w-4 h-4 text-emerald-400" />
+                </button>
+              )}
+            </div>
+          )}
+
           {!isPaidUser && (
             currentUser?.status === 'pending' ? (
               <div className="bg-gradient-to-r from-amber-950/80 via-neutral-900 to-amber-950/60 border border-amber-500/60 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
@@ -281,14 +314,14 @@ export const CoursePage: React.FC<CoursePageProps> = ({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                        Estatus de Cuenta: Pendiente de Confirmación de Pago
+                        Estatus de Cuenta: Pendiente de Suscripción
                       </span>
                       <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded border border-amber-500/40">
-                        En Revisión
+                        Por Activar
                       </span>
                     </div>
                     <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
-                      Hemos registrado tu pago ($1,099 MXN). Un administrador validará la transferencia para liberar los módulos 2, 3 y 4 a tu WhatsApp y correo. Por lo pronto, tienes habilitado el <strong>Video 1 (Clase Gratis)</strong>.
+                      Hemos guardado tu registro. Para desbloquear los módulos 2, 3 y 4 y recibir tus créditos de IA, completa tu suscripción mensual de <strong>$9 USD</strong> en PayPal.
                     </p>
                   </div>
                 </div>
@@ -298,7 +331,7 @@ export const CoursePage: React.FC<CoursePageProps> = ({
                   className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider shrink-0 transition-transform active:scale-95 cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Ver Ficha de Pago SPEI</span>
+                  <span>Completar en PayPal ($9 USD / mes)</span>
                 </button>
               </div>
             ) : (
@@ -327,7 +360,7 @@ export const CoursePage: React.FC<CoursePageProps> = ({
                   className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs uppercase tracking-wider shrink-0 transition-transform active:scale-95 cursor-pointer shadow-md flex items-center justify-center gap-2"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Desbloquear Todo ($1,099 MXN)</span>
+                  <span>Desbloquear Todo ($9 USD / mes)</span>
                 </button>
               </div>
             )
